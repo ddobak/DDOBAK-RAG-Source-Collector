@@ -1,0 +1,130 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# DDOBAK RAG Source Collector - 프로젝트 규칙
+
+## 프로젝트 개요
+Poetry 기반 다중 사이트 웹 크롤링 프로젝트입니다. 클린 코드와 클린 아키텍처 원칙을 따라 각 사이트별로 모듈화된 크롤러를 구현합니다.
+
+## 프로젝트 구조
+
+```
+DDOBAK-RAG-Source-Collector/
+├── main.py                     # 애플리케이션 진입점
+├── pyproject.toml             # Poetry 설정 및 스크립트 정의  
+├── config.py                  # 설정 관리 (.env 포함)
+├── .env.example               # 환경변수 예시 파일
+├── .env                       # 실제 환경변수 (gitignore)
+├── lawtalk/                   # 로톡 크롤러 모듈
+│   ├── __init__.py
+│   ├── resolved_case_crawler.py
+│   └── consultation_case_crawler.py  
+├── law_open_api/              # 법무부 오픈API 크롤러 모듈
+│   ├── __init__.py
+│   └── api_crawler.py
+├── easylaw/                   # 이지로 크롤러 모듈
+│   ├── __init__.py
+│   └── crawler.py
+├── common/                    # 공통 유틸리티
+│   ├── __init__.py
+│   ├── base_crawler.py        # 크롤러 베이스 클래스
+│   └── utils.py               # 공통 헬퍼 함수들
+└── tests/                     # 테스트 코드
+    ├── __init__.py
+    ├── test_lawtalk.py
+    ├── test_law_open_api.py
+    └── test_easylaw.py
+```
+
+## 핵심 파일 설명
+
+### 진입점과 설정
+- [main.py](mdc:main.py): CLI 인자를 받아 적절한 크롤러를 실행하는 메인 진입점
+- [config.py](mdc:config.py): 환경변수와 설정값들을 관리하는 중앙 설정 파일
+- [pyproject.toml](mdc:pyproject.toml): Poetry 의존성 관리 및 실행 스크립트 정의
+
+### 크롤러 모듈
+- [lawtalk/](mdc:lawtalk): 기존 로톡 크롤러들을 정리한 모듈
+- [law_open_api/](mdc:law_open_api): 법무부 오픈API 크롤러 모듈  
+- [easylaw/](mdc:easylaw): 이지로 크롤러 모듈
+- [common_crawler.py](mdc:common/common_crawler.py): 모든 크롤러가 상속받는 베이스 클래스
+
+## 개발 규칙
+
+### 1. 언어 규칙
+- **모든 설명과 문서는 한국어로 작성**
+- **코드 주석은 간결한 한국어로 작성**
+- **로깅 메시지는 영어로 작성**
+
+### 2. 코드 품질 규칙
+- **클린 코드와 클린 아키텍처 원칙 준수**
+- **목적, 책임, 기능별로 모듈화**
+- **높은 가독성과 재사용성 유지**
+- **90% 이상 확신이 있을 때만 코드 수정**
+- **git diff를 최소화하는 변경**
+
+### 3. Poetry 사용 규칙
+- **Python 3.11 사용**
+- **모든 실행은 `poetry run` 기반**
+- **테스트 스크립트: `poetry run test-{site_name}`**
+- **실행 스크립트: `poetry run start {site_name}`**
+- **최신 호환 패키지 버전 사용**
+
+### 4. 아키텍처 규칙
+- **각 사이트별 독립적인 크롤러 모듈**
+- **공통 기능은 common/ 모듈에 구현**
+- **requests 또는 selenium 유연하게 선택**
+- **환경변수를 통한 민감 정보 관리**
+
+### 5. 패키지 관리
+- **beautifulsoup4**: HTML 파싱용 (최신 버전)
+- **requests**: HTTP 클라이언트용 (최신 버전)  
+- **selenium**: 동적 페이지 크롤링용 (필요시)
+- **python-dotenv**: 환경변수 관리용
+- **click**: CLI 인터페이스용
+- **pytest**: 테스트 프레임워크
+
+### 6. 실행 패턴
+```bash
+# 특정 사이트 크롤링 실행
+poetry run start lawtalk
+poetry run start law_open_api  
+poetry run start easylaw
+
+# 테스트 실행
+poetry run test-lawtalk
+poetry run test-law_open_api
+poetry run test-easylaw
+```
+
+### 7. 파일 네이밍 규칙
+- **크롤러 파일**: `{기능}_crawler.py`
+- **테스트 파일**: `test_{모듈명}.py`
+- **스네이크 케이스 사용**
+
+### 8. Import 규칙
+```python
+# 표준 라이브러리
+import os
+import sys
+
+# 서드파티 라이브러리  
+import requests
+from bs4 import BeautifulSoup
+
+# 로컬 모듈
+from common.base_crawler import BaseCrawler
+from config import settings
+```
+
+### 9. 에러 처리
+- **명확한 예외 처리와 로깅**
+- **영어로 된 로그 메시지**
+- **사용자 친화적인 한국어 에러 메시지**
+
+### 10. 테스트 규칙
+- **각 크롤러별 단위 테스트 작성**
+- **pytest 사용**
+- **실제 네트워크 호출 활용해 확실한 검증**
