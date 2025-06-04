@@ -12,8 +12,8 @@ Poetry 기반 다중 사이트 웹 크롤링 프로젝트입니다. 클린 코�
 
 ```
 DDOBAK-RAG-Source-Collector/
-├── main.py                     # 애플리케이션 진입점
-├── pyproject.toml             # Poetry 설정 및 스크립트 정의  
+├── main.py                     # 애플리케이션 진입점 (핵심 흐름만)
+├── pyproject.toml             # Poetry 설정 및 크롤러 entry points 정의  
 ├── config.py                  # 설정 관리 (.env 포함)
 ├── .env.example               # 환경변수 예시 파일
 ├── .env                       # 실제 환경변수 (gitignore)
@@ -30,6 +30,7 @@ DDOBAK-RAG-Source-Collector/
 ├── common/                    # 공통 유틸리티
 │   ├── __init__.py
 │   ├── base_crawler.py        # 크롤러 베이스 클래스
+│   ├── crawler_registry.py    # Poetry entry points 기반 크롤러 관리
 │   └── utils.py               # 공통 헬퍼 함수들
 └── tests/                     # 테스트 코드
     ├── __init__.py
@@ -41,15 +42,36 @@ DDOBAK-RAG-Source-Collector/
 ## 핵심 파일 설명
 
 ### 진입점과 설정
-- [main.py](mdc:main.py): CLI 인자를 받아 적절한 크롤러를 실행하는 메인 진입점
-- [config.py](mdc:config.py): 환경변수와 설정값들을 관리하는 중앙 설정 파일
-- [pyproject.toml](mdc:pyproject.toml): Poetry 의존성 관리 및 실행 스크립트 정의
+- **main.py**: CLI 인자를 받아 크롤러를 실행하는 메인 진입점 (핵심 흐름만 포함)
+- **config.py**: 환경변수와 설정값들을 관리하는 중앙 설정 파일
+- **pyproject.toml**: Poetry 의존성 관리 및 크롤러 entry points 정의
 
 ### 크롤러 모듈
-- [lawtalk/](mdc:lawtalk): 기존 로톡 크롤러들을 정리한 모듈
-- [law_open_api/](mdc:law_open_api): 법무부 오픈API 크롤러 모듈  
-- [easylaw/](mdc:easylaw): 이지로 크롤러 모듈
-- [common_crawler.py](mdc:common/common_crawler.py): 모든 크롤러가 상속받는 베이스 클래스
+- **lawtalk/**: 로톡 크롤러들을 정리한 모듈
+- **law_open_api/**: 법무부 오픈API 크롤러 모듈  
+- **easylaw/**: 이지로 크롤러 모듈
+
+### 공통 모듈
+- **common/base_crawler.py**: 모든 크롤러가 상속받는 베이스 클래스
+- **common/crawler_registry.py**: Poetry entry points 기반 크롤러 관리
+- **common/utils.py**: 공통 헬퍼 함수들
+
+## 아키텍처 특징
+
+### 1. Poetry Entry Points 기반 플러그인 시스템
+- 크롤러 등록은 `pyproject.toml`의 `[tool.poetry.plugins."ddobak.crawlers"]`에서 관리
+- 새로운 크롤러 추가시 `pyproject.toml`만 수정하면 자동 인식
+- 동적 로딩으로 확장성과 유지보수성 확보
+
+### 2. 관심사 분리
+- **main.py**: 핵심 진행 흐름만 (19줄)
+- **crawler_registry.py**: 크롤러 관리 로직 분리
+- **config.py**: 순수 설정값만 관리
+
+### 3. 상속 기반 구조
+- 모든 크롤러는 `BaseCrawler`를 상속
+- 공통 기능 (로깅, 출력 디렉토리 설정) 자동 제공
+- `get_site_name()`, `crawl()` 메서드만 구현하면 됨
 
 ## 개발 규칙
 
@@ -74,7 +96,9 @@ DDOBAK-RAG-Source-Collector/
 
 ### 4. 아키텍처 규칙
 - **각 사이트별 독립적인 크롤러 모듈**
+- **모든 크롤러는 BaseCrawler 상속**
 - **공통 기능은 common/ 모듈에 구현**
+- **Poetry entry points로 크롤러 등록**
 - **requests 또는 selenium 유연하게 선택**
 - **환경변수를 통한 민감 정보 관리**
 
@@ -99,12 +123,26 @@ poetry run test-law_open_api
 poetry run test-easylaw
 ```
 
-### 7. 파일 네이밍 규칙
+### 7. 크롤러 개발 규칙
+```python
+# 새 크롤러 구현 예시
+from common.base_crawler import BaseCrawler
+
+class NewSiteCrawler(BaseCrawler):
+    def get_site_name(self) -> str:
+        return "new_site"
+    
+    def crawl(self) -> None:
+        # 크롤링 로직 구현
+        pass
+```
+
+### 8. 파일 네이밍 규칙
 - **크롤러 파일**: `{기능}_crawler.py`
 - **테스트 파일**: `test_{모듈명}.py`
 - **스네이크 케이스 사용**
 
-### 8. Import 규칙
+### 9. Import 규칙
 ```python
 # 표준 라이브러리
 import os
@@ -119,12 +157,19 @@ from common.base_crawler import BaseCrawler
 from config import settings
 ```
 
-### 9. 에러 처리
+### 10. 에러 처리
 - **명확한 예외 처리와 로깅**
 - **영어로 된 로그 메시지**
 - **사용자 친화적인 한국어 에러 메시지**
 
-### 10. 테스트 규칙
+### 11. 테스트 규칙
 - **각 크롤러별 단위 테스트 작성**
 - **pytest 사용**
 - **실제 네트워크 호출 활용해 확실한 검증**
+
+## 새 크롤러 추가 방법
+
+1. **크롤러 클래스 생성**: `BaseCrawler`를 상속받아 구현
+2. **pyproject.toml 등록**: `[tool.poetry.plugins."ddobak.crawlers"]`에 entry point 추가
+3. **테스트 작성**: `tests/` 디렉토리에 테스트 파일 생성
+4. **설정 추가**: 필요시 `config.py`에 사이트별 설정 추가
