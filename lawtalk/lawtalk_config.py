@@ -53,7 +53,7 @@ class LawtalkConfig:
             "재산범죄": "62a9f91a9fcafe948d73ea0c",
             "부동산_임대차": "62a9f91a9fcafe948d73ea12",
             "형사철자": "62a9f91a9fcafe948d73ea0e",
-            "명예회손_모욕": "62a9f91a9fcafe948d73ea10",
+            "명예훼손_모욕": "62a9f91a9fcafe948d73ea10",
             "금전_계약 문제": "62a9f91a9fcafe948d73ea13",
             "회사": "62a9f91b9fcafe948d73ea17",
             "의료_세금_행정": "62a9f91b9fcafe948d73ea18",
