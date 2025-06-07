@@ -60,6 +60,10 @@ class Settings:
                 )  # 파일 출력
             ]
         )
+        
+        # AWS credential 관련 로그 레벨을 WARNING으로 설정하여 INFO 로그 숨김
+        logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
+        logging.getLogger('boto3.resources').setLevel(logging.WARNING)
     
     def get_logger(self, name: str) -> logging.Logger:
         """모듈별 로거를 반환합니다."""

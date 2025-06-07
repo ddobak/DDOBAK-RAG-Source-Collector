@@ -20,7 +20,7 @@ def get_available_crawlers() -> Dict[str, Any]:
     return crawlers
 
 
-def create_crawler(site: str) -> Optional[Any]:
+def create_crawler(site: str, crawl_options: Optional[Dict[str, Any]] = None) -> Optional[Any]:
     """사이트별 크롤러 인스턴스를 생성합니다."""
     crawlers = get_available_crawlers()
     
@@ -30,7 +30,7 @@ def create_crawler(site: str) -> Optional[Any]:
     try:
         # Entry point에서 크롤러 클래스 로드
         crawler_class = crawlers[site].load()
-        return crawler_class()
+        return crawler_class(crawl_options)
     except Exception as e:
         print(f"크롤러 생성 실패 ({site}): {e}")
         return None

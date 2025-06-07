@@ -1,4 +1,4 @@
-from lawtalk.common.lawtalk_crawler import LawtalkCrawler
+from lawtalk.lawtalk_crawler import LawtalkCrawler
 
 
 def test_request_qna_cases():

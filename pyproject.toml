@@ -31,8 +31,6 @@ test-easylaw = "pytest:main"
 # 크롤러 플러그인 등록
 [tool.poetry.plugins."ddobak.crawlers"]
 lawtalk = "lawtalk.lawtalk_crawler:LawtalkCrawler"
-law_open_api = "law_open_api.api_crawler:ApiCrawler"
-easylaw = "easylaw.crawler:EasylawCrawler"
 
 [tool.ruff]
 line-length = 120
