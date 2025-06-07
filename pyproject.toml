@@ -3,7 +3,7 @@ name = "ddobak-rag-source-collector"
 version = "0.1.0"
 description = "Multi-site web crawler for RAG source collection"
 authors = ["GU-0 <rjsgud5386@gmail.com>"]
-readme = "README.md"
+packages = [{include = "lawtalk"}, {include = "law_open_api"}, {include = "easylaw"}, {include = "common"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -12,6 +12,7 @@ beautifulsoup4 = "^4.13.4"
 python-dotenv = "^1.0.0"
 click = "^8.1.7"
 selenium = { version = "^4.15.0", optional = true }
+boto3 = "^1.38.32"
 
 [tool.poetry.extras]
 selenium = ["selenium"]

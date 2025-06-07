@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 
-from config import settings
+from config import config
 
 
 class BaseCrawler(ABC):
@@ -22,23 +22,18 @@ class BaseCrawler(ABC):
         logger = logging.getLogger(self.__class__.__name__)
         if not logger.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter(settings.LOG_FORMAT)
+            formatter = logging.Formatter(config.LOG_FORMAT)
             handler.setFormatter(formatter)
             logger.addHandler(handler)
-            logger.setLevel(getattr(logging, settings.LOG_LEVEL))
+            logger.setLevel(getattr(logging, config.LOG_LEVEL))
+            logger.propagate = False  # 부모 로거로의 전파 차단
         return logger
     
     def _setup_output_dir(self) -> Path:
         """출력 디렉토리를 설정합니다."""
-        site_name = self.get_site_name()
-        output_dir = settings.DATA_DIR / site_name
+        output_dir = config.DATA_DIR / self.__class__.__name__
         output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir
-    
-    @abstractmethod
-    def get_site_name(self) -> str:
-        """사이트 이름을 반환해야 하는 추상 메서드"""
-        pass
     
     @abstractmethod
     def crawl(self) -> None:
