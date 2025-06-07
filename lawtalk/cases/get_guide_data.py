@@ -56,7 +56,7 @@ def collect_and_save_single_guide_page(session_cookie: Any, category_name: str, 
         # 데이터가 없으면 종료
         if not posts:
             logger.info(f"No data available for {category_name} at offset {offset}")
-            return {'success': False, 'error': 'No data', 'category': category_name, 'offset': offset}
+            return {'success': False, 'error': 'No data', 'category': category_name, 'offset': offset, 'early_stop': True}
         
         # 최종 데이터 구성
         final_data = {
