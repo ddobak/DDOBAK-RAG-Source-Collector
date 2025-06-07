@@ -331,13 +331,8 @@ def collect_qna_cases_with_pagination(session_cookie: Any, start_offset: int = 0
     
     logger.info(f"Starting Q&A collection: offset {start_offset} to {end_offset}, simple_result={simple_result}, only_new={only_new}")
     
-    # only_new가 True이고 S3를 사용하는 경우 크롤링 시작 시간 저장
-    if only_new and not storage_type:
-        bucket = config.AWS_S3_BUCKET
-        s3_dir_name = S3_DIR_NAME
-        crawl_start_time = S3Manager().get_current_timestamp()
-        S3Manager().save_last_crawl_start_time(bucket, s3_dir_name, crawl_start_time)
-        logger.info(f"Saved crawl start time: {crawl_start_time}")
+    # 크롤링 시작 시간을 미리 기록 (완료 후 저장용)
+    crawl_start_time = S3Manager().get_current_timestamp() if not storage_type else None
     
     while current_offset < end_offset:
         result = collect_and_save_single_qna_page(
@@ -369,6 +364,13 @@ def collect_qna_cases_with_pagination(session_cookie: Any, start_offset: int = 0
         # end_offset를 초과하지 않도록 조정
         if current_offset >= end_offset:
             break
+    
+    # S3를 사용하고 크롤링이 성공적으로 완료된 경우에만 크롤링 시간 업데이트
+    if not storage_type and crawl_start_time and total_files > 0:
+        bucket = config.AWS_S3_BUCKET
+        s3_dir_name = S3_DIR_NAME
+        S3Manager().save_last_crawl_start_time(bucket, s3_dir_name, crawl_start_time)
+        logger.info(f"Updated last crawl time: {crawl_start_time}")
     
     # 최종 결과 구성
     final_result = {

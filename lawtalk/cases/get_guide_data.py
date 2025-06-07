@@ -270,16 +270,11 @@ def get_all_categories_guide_posts(session_cookie: Any, start_offset: int = 0, e
     
     logger.info(f"Starting guide posts collection for all categories: offset {start_offset} to {end_offset}, simple_result={simple_result}, only_new={only_new}")
     
+    # 크롤링 시작 시간을 미리 기록 (모든 카테고리에 대해 동일한 시작 시간 사용)
+    crawl_start_time = S3Manager().get_current_timestamp() if not storage_type else None
+    
     for category_name, category_id in config.CATEGORY_IDS.items():
         logger.info(f"Processing category: {category_name} ({category_id})")
-        
-        # S3를 사용하는 경우 카테고리별 크롤링 시작 시간 저장
-        if not storage_type:
-            bucket = config.AWS_S3_BUCKET
-            s3_dir_name = f"{S3_DIR_NAME}/{category_name}"
-            crawl_start_time = S3Manager().get_current_timestamp()
-            S3Manager().save_last_crawl_start_time(bucket, s3_dir_name, crawl_start_time)
-            logger.info(f"Saved crawl start time for {category_name}: {crawl_start_time}")
         
         # 각 카테고리별로 페이지네이션 수행
         category_results = collect_category_guide_posts_with_pagination(
@@ -296,6 +291,13 @@ def get_all_categories_guide_posts(session_cookie: Any, start_offset: int = 0, e
         all_results[category_name] = category_results
         total_files += category_results.get('total_files', 0)
         total_posts += category_results.get('total_posts', 0)
+        
+        # S3를 사용하고 크롤링이 성공적으로 완료된 경우에만 크롤링 시간 업데이트
+        if not storage_type and category_results.get('success') and crawl_start_time:
+            bucket = config.AWS_S3_BUCKET
+            s3_dir_name = f"{S3_DIR_NAME}/{category_name}"
+            S3Manager().save_last_crawl_start_time(bucket, s3_dir_name, crawl_start_time)
+            logger.info(f"Updated last crawl time for {category_name}: {crawl_start_time}")
         
         logger.info(f"Completed category {category_name}: {category_results.get('total_posts', 0)} posts in {category_results.get('total_files', 0)} files")
     
