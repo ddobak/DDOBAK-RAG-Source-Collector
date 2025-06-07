@@ -17,10 +17,26 @@ DDOBAK-RAG-Source-Collector/
 ├── config.py                  # 설정 관리 (.env 포함)
 ├── .env.example               # 환경변수 예시 파일
 ├── .env                       # 실제 환경변수 (gitignore)
+├── README.md                  # 프로젝트 메인 문서
+├── docs/                      # 프로젝트 문서화
+│   ├── architecture.md        # 아키텍처 설명
+│   ├── data-structure.md      # 데이터 구조 설명
+│   ├── setup.md              # 설정 및 설치 가이드
+│   └── crawler-guide.md      # 크롤러 개발 가이드
+├── data/                      # 크롤링된 데이터 저장
+│   └── lawtalk/              # 로톡 데이터
+│       ├── consultation_case/ # 상담 사례
+│       ├── solved_cases/     # 해결된 사례
+│       └── guide_posts/      # 가이드 포스트
+├── logs/                      # 로그 파일
 ├── lawtalk/                   # 로톡 크롤러 모듈
 │   ├── __init__.py
-│   ├── resolved_case_crawler.py
-│   └── consultation_case_crawler.py  
+│   ├── lawtalk_crawler.py    # 메인 크롤러
+│   ├── lawtalk_config.py     # 로톡 설정
+│   └── cases/                # 사례별 크롤링 모듈
+│       ├── get_qna_data.py   # 상담 사례 크롤링
+│       ├── get_solved_data.py # 해결된 사례 크롤링
+│       └── get_guide_data.py # 가이드 포스트 크롤링
 ├── law_open_api/              # 법무부 오픈API 크롤러 모듈
 │   ├── __init__.py
 │   └── api_crawler.py
@@ -30,13 +46,15 @@ DDOBAK-RAG-Source-Collector/
 ├── common/                    # 공통 유틸리티
 │   ├── __init__.py
 │   ├── base_crawler.py        # 크롤러 베이스 클래스
-│   ├── crawler_registry.py    # Poetry entry points 기반 크롤러 관리
-│   └── utils.py               # 공통 헬퍼 함수들
+│   └── crawler_registry.py    # Poetry entry points 기반 크롤러 관리
+├── utils/                     # 유틸리티 함수들
+│   ├── __init__.py
+│   ├── utils.py              # 로컬 파일 처리 유틸리티
+│   ├── s3.py                 # S3 관련 유틸리티
+│   └── validate_args.py      # CLI 인자 검증
 └── tests/                     # 테스트 코드
     ├── __init__.py
-    ├── test_lawtalk.py
-    ├── test_law_open_api.py
-    └── test_easylaw.py
+    └── test_lawtalk.py
 ```
 
 ## 핵심 파일 설명
@@ -54,7 +72,7 @@ DDOBAK-RAG-Source-Collector/
 ### 공통 모듈
 - **common/base_crawler.py**: 모든 크롤러가 상속받는 베이스 클래스
 - **common/crawler_registry.py**: Poetry entry points 기반 크롤러 관리
-- **common/utils.py**: 공통 헬퍼 함수들
+- **utils/**: 프로젝트 전반에서 사용되는 유틸리티 함수들
 
 ## 아키텍처 특징
 
@@ -64,9 +82,10 @@ DDOBAK-RAG-Source-Collector/
 - 동적 로딩으로 확장성과 유지보수성 확보
 
 ### 2. 관심사 분리
-- **main.py**: 핵심 진행 흐름만 (19줄)
+- **main.py**: 핵심 진행 흐름만 (간결한 CLI 인터페이스)
 - **crawler_registry.py**: 크롤러 관리 로직 분리
 - **config.py**: 순수 설정값만 관리
+- **utils/**: 기능별로 분리된 유틸리티 모듈들
 
 ### 3. 상속 기반 구조
 - 모든 크롤러는 `BaseCrawler`를 상속
@@ -154,7 +173,7 @@ from bs4 import BeautifulSoup
 
 # 로컬 모듈
 from common.base_crawler import BaseCrawler
-from config import settings
+from config import config
 ```
 
 ### 10. 에러 처리
