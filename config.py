@@ -14,6 +14,53 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+class ColoredFormatter(logging.Formatter):
+    """로그 레벨별로 색상을 적용하는 포매터"""
+    
+    # ANSI 색상 코드와 스타일
+    COLORS = {
+        'DEBUG': '\033[96m',    # 밝은 시안색 (Bright Cyan)
+        'INFO': '\033[92m',     # 밝은 초록색 (Bright Green)  
+        'WARNING': '\033[93m',  # 밝은 노란색 (Bright Yellow)
+        'ERROR': '\033[91m',    # 밝은 빨간색 (Bright Red)
+        'CRITICAL': '\033[95m', # 밝은 마젠타색 (Bright Magenta)
+        'RESET': '\033[0m',     # 색상 리셋
+        'BOLD': '\033[1m',      # 볼드
+        'DIM': '\033[2m'        # 어둡게
+    }
+    
+    def format(self, record):
+        # 원본 포맷 적용
+        log_message = super().format(record)
+        
+        # 로그 레벨에 따른 색상 가져오기
+        color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+        reset = self.COLORS['RESET']
+        bold = self.COLORS['BOLD']
+        dim = self.COLORS['DIM']
+        
+        # 시간 부분을 어둡게 처리
+        parts = log_message.split(' - ')
+        if len(parts) >= 4:
+            timestamp = parts[0]
+            logger_name = parts[1] 
+            level_name = parts[2]
+            message = ' - '.join(parts[3:])
+            
+            # 색상 적용된 메시지 구성
+            colored_message = (
+                f"{dim}{timestamp}{reset} - "
+                f"{dim}{logger_name}{reset} - "
+                f"{color}{bold}{level_name}{reset} - "
+                f"{color}{message}{reset}"
+            )
+        else:
+            # 기본 fallback
+            colored_message = f"{color}{bold}{log_message}{reset}"
+        
+        return colored_message
+
+
 class Settings:
     """애플리케이션 설정 클래스"""
     
@@ -48,18 +95,24 @@ class Settings:
         # 현재 시간으로 로그 파일명 생성 (MMDDHHMM.log)
         log_filename = f"{self.DATETIME}.log"
         
-        # 루트 로거 설정
-        logging.basicConfig(
-            level=getattr(logging, self.LOG_LEVEL.upper()),
-            format=self.LOG_FORMAT,
-            handlers=[
-                logging.StreamHandler(),  # 콘솔 출력
-                logging.FileHandler(
-                    self.LOG_DIR / log_filename, 
-                    encoding='utf-8'
-                )  # 파일 출력
-            ]
+        # 콘솔 핸들러 (색상 포매터 적용)
+        console_handler = logging.StreamHandler()
+        console_formatter = ColoredFormatter(self.LOG_FORMAT)
+        console_handler.setFormatter(console_formatter)
+        
+        # 파일 핸들러 (일반 포매터 적용)
+        file_handler = logging.FileHandler(
+            self.LOG_DIR / log_filename, 
+            encoding='utf-8'
         )
+        file_formatter = logging.Formatter(self.LOG_FORMAT)
+        file_handler.setFormatter(file_formatter)
+        
+        # 루트 로거 설정
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, self.LOG_LEVEL.upper()))
+        root_logger.addHandler(console_handler)
+        root_logger.addHandler(file_handler)
         
         # AWS credential 관련 로그 레벨을 WARNING으로 설정하여 INFO 로그 숨김
         logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
