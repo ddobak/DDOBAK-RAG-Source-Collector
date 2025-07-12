@@ -32,6 +32,7 @@ test-easylaw = "pytest:main"
 [tool.poetry.plugins."ddobak.crawlers"]
 lawtalk = "lawtalk.lawtalk_crawler:LawtalkCrawler"
 easylaw = "easylaw.easylaw_crawler:EasylawCrawler"
+law_open_api = "law_open_api.api_crawler:LawOpenApiCrawler"
 
 [tool.ruff]
 line-length = 120
