@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 import requests
 from bs4 import BeautifulSoup
+from io import BytesIO
 
 from common.base_crawler import BaseCrawler
 from .law_open_api_config import LAW_OPEN_API_CONFIG, DATA_STRUCTURE
+from utils.s3 import S3Manager
 
 
 class LawOpenApiCrawler(BaseCrawler):
@@ -905,6 +907,18 @@ class LawOpenApiCrawler(BaseCrawler):
         if not data:
             return
         
+        # storage_type에 따라 저장 방식 분기
+        storage_type = self.crawl_options.get('storage_type', True)
+        
+        if storage_type:
+            # 로컬 저장
+            self._save_to_local_individually(keyword, data)
+        else:
+            # S3 저장
+            self._save_to_s3_individually(keyword, data)
+    
+    def _save_to_local_individually(self, keyword: str, data: List[Dict[str, Any]]) -> None:
+        """판례 데이터를 로컬에 개별 파일로 저장"""
         # 키워드별 디렉토리 생성
         keyword_dir = self.precedent_dir / keyword
         keyword_dir.mkdir(exist_ok=True)
@@ -927,6 +941,57 @@ class LawOpenApiCrawler(BaseCrawler):
                 self.logger.error(f"Error saving precedent {precedent.get('prec_id', i)}: {e}")
         
         self.logger.info(f"Saved {saved_count} precedent records individually to {keyword_dir}")
+    
+    def _save_to_s3_individually(self, keyword: str, data: List[Dict[str, Any]]) -> None:
+        """판례 데이터를 S3에 개별 파일로 저장"""
+        try:
+            from config import config
+            
+            # S3 설정 확인
+            if not config.AWS_S3_BUCKET:
+                self.logger.error("S3 bucket not configured, falling back to local storage")
+                self._save_to_local_individually(keyword, data)
+                return
+            
+            s3_manager = S3Manager()
+            saved_count = 0
+            
+            for i, precedent in enumerate(data):
+                try:
+                    # 파일명 생성 (prec_id가 있으면 사용, 없으면 인덱스 사용)
+                    prec_id = precedent.get('prec_id', f'{i+1:04d}')
+                    filename = f"precedent_{prec_id}.json"
+                    
+                    # S3 키 생성
+                    s3_key = f"law_open_api/precedent/{keyword}/{filename}"
+                    
+                    # JSON 데이터를 BytesIO로 준비
+                    json_content = json.dumps(precedent, ensure_ascii=False, indent=2)
+                    json_bytes = json_content.encode('utf-8')
+                    json_buffer = BytesIO(json_bytes)
+                    
+                    # S3에 업로드
+                    upload_result = s3_manager.upload_file(
+                        file_path_or_obj=json_buffer,
+                        bucket=config.AWS_S3_BUCKET,
+                        key=s3_key
+                    )
+                    
+                    if upload_result:
+                        saved_count += 1
+                    else:
+                        self.logger.error(f"Failed to upload precedent {prec_id} to S3")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error uploading precedent {precedent.get('prec_id', i)} to S3: {e}")
+            
+            self.logger.info(f"Uploaded {saved_count} precedent records individually to S3 (s3://{config.AWS_S3_BUCKET}/law_open_api/precedent/{keyword}/)")
+            
+        except Exception as e:
+            self.logger.error(f"S3 upload failed: {str(e)}")
+            # S3 실패시 로컬에 백업 저장
+            self.logger.info("Falling back to local storage")
+            self._save_to_local_individually(keyword, data)
     
     def _save_precedent_data(self, keyword: str, data: List[Dict[str, Any]]) -> None:
         """판례 데이터 저장 (레거시 메서드 - 호환성 유지)"""
