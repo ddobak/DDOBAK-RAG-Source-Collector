@@ -93,14 +93,18 @@ def filter_qa_data_by_mode(qa_data_list: List[Dict], simple_result: bool) -> Lis
         # detail 모드: 모든 필드 반환
         return qa_data_list
     
-    # simple 모드: category_id, category_name, question, answer만 반환
+    # simple 모드: 기본 필드 + RAG 최적화 필드 포함
     filtered_data = []
     for item in qa_data_list:
         filtered_item = {
             'category_id': item.get('category_id'),
             'category_name': item.get('category_name'),
             'question': item.get('question'),
-            'answer': item.get('answer')
+            'answer': item.get('answer'),
+            # RAG 최적화 필드 추가
+            'text_content': item.get('text_content'),
+            'title': item.get('title'),
+            'metadata': item.get('metadata')
         }
         filtered_data.append(filtered_item)
     

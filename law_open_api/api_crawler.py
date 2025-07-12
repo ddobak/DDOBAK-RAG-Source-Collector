@@ -61,7 +61,7 @@ class LawOpenApiCrawler(BaseCrawler):
                 # 판례 본문 조회 및 저장
                 precedent_data = self._fetch_precedent_details(precedent_list, keyword)
                 if precedent_data:
-                    self._save_precedent_data(keyword, precedent_data)
+                    self._save_precedent_data_individually(keyword, precedent_data)
             
             # 요청 간격 준수
             time.sleep(self.config["request_delay"])
@@ -882,7 +882,9 @@ class LawOpenApiCrawler(BaseCrawler):
             "judgment_order", 
             "reasoning", 
             "judgment_sections",
-            "reply_content"  # 일반적으로 비어있는 필드
+            "reply_content",  # 일반적으로 비어있는 필드
+            "reference_law",  # 참조조문 제거
+            "reference_case"  # 참조판례 제거
         ]
         
         for field in fields_to_remove:
@@ -898,8 +900,36 @@ class LawOpenApiCrawler(BaseCrawler):
         
         return precedent_data
     
+    def _save_precedent_data_individually(self, keyword: str, data: List[Dict[str, Any]]) -> None:
+        """판례 데이터를 개별 파일로 저장"""
+        if not data:
+            return
+        
+        # 키워드별 디렉토리 생성
+        keyword_dir = self.precedent_dir / keyword
+        keyword_dir.mkdir(exist_ok=True)
+        
+        saved_count = 0
+        for i, precedent in enumerate(data):
+            try:
+                # 파일명 생성 (prec_id가 있으면 사용, 없으면 인덱스 사용)
+                prec_id = precedent.get('prec_id', f'{i+1:04d}')
+                filename = f"precedent_{prec_id}.json"
+                filepath = keyword_dir / filename
+                
+                # 개별 파일로 저장
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(precedent, f, ensure_ascii=False, indent=2)
+                
+                saved_count += 1
+                
+            except Exception as e:
+                self.logger.error(f"Error saving precedent {precedent.get('prec_id', i)}: {e}")
+        
+        self.logger.info(f"Saved {saved_count} precedent records individually to {keyword_dir}")
+    
     def _save_precedent_data(self, keyword: str, data: List[Dict[str, Any]]) -> None:
-        """판례 데이터 저장"""
+        """판례 데이터 저장 (레거시 메서드 - 호환성 유지)"""
         if not data:
             return
         

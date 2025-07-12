@@ -58,6 +58,35 @@ class EasylawDataExtractor:
         category_id = url_params.get('category_id')
         category_name = get_category_name(category_id, self.config.CATEGORY_MAPPING) if category_id else '기타'
         
+        # RAG용 통합 텍스트 내용 생성
+        text_parts = []
+        
+        # 질문 제목 추가
+        if question_text:
+            text_parts.append(f"질문: {question_text}")
+        
+        # 답변 내용 추가
+        if answer_text:
+            text_parts.append(f"답변: {answer_text}")
+        
+        # 카테고리 정보 추가
+        if category_name:
+            text_parts.append(f"카테고리: {category_name}")
+        
+        # 통합 텍스트 생성
+        text_content = "\n\n".join(text_parts)
+        
+        # RAG용 메타데이터 생성
+        metadata = {
+            "question_id": url_params.get('question_id'),
+            "category_id": category_id,
+            "category_name": category_name,
+            "detail_url": question_url,
+            "full_url": build_full_url(self.config.BASE_URL, question_url),
+            "document_type": "qa",
+            "crawl_date": datetime.now().isoformat()
+        }
+        
         return {
             'question_id': url_params.get('question_id'),
             'category_id': category_id,
@@ -65,7 +94,11 @@ class EasylawDataExtractor:
             'question': question_text,
             'answer': answer_text,
             'detail_url': question_url,
-            'full_url': build_full_url(self.config.BASE_URL, question_url)
+            'full_url': build_full_url(self.config.BASE_URL, question_url),
+            # RAG 최적화 필드 추가
+            'text_content': text_content,
+            'title': question_text,
+            'metadata': metadata
         }
 
 
@@ -149,39 +182,87 @@ class EasylawDataSaver:
             self._save_to_s3(filtered_data)
     
     def _save_to_local(self, qa_data_list: List[Dict]) -> None:
-        """로컬 파일 시스템에 저장"""
+        """로컬 파일 시스템에 개별 파일로 저장"""
         # 데이터 디렉토리 생성
         data_dir = self.output_dir / self.config.OUTPUT_SUBDIR
         data_dir.mkdir(exist_ok=True)
         
-        # JSON 파일로 저장
+        # 개별 파일로 저장
+        saved_count = 0
+        for i, qa_data in enumerate(qa_data_list):
+            try:
+                # 파일명 생성 (question_id가 있으면 사용, 없으면 인덱스 사용)
+                question_id = qa_data.get('question_id', f'{i+1:04d}')
+                filename = f"qa_{question_id}.json"
+                filepath = data_dir / filename
+                
+                # 개별 파일로 저장
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(qa_data, f, ensure_ascii=False, indent=2)
+                
+                saved_count += 1
+                
+            except Exception as e:
+                self.logger.error(f"Error saving Q&A {qa_data.get('question_id', i)}: {e}")
+        
+        self.logger.info(f"Data saved to {saved_count} individual files in {data_dir}")
+        
+        # 호환성을 위해 기존 통합 파일도 저장
         json_file = data_dir / self.config.JSON_FILENAME
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(qa_data_list, f, ensure_ascii=False, indent=2)
         
-        self.logger.info(f"Data saved to local file: {json_file}")
+        self.logger.info(f"Legacy combined file also saved: {json_file}")
     
     def _save_to_s3(self, qa_data_list: List[Dict]) -> None:
-        """S3에 저장 (기존 데이터 덮어쓰기)"""
+        """S3에 개별 파일로 저장"""
         try:
-            # simple/detail 모드에 따라 파일명 결정
+            from io import BytesIO
+            
+            # 개별 파일로 S3에 저장
+            saved_count = 0
+            for i, qa_data in enumerate(qa_data_list):
+                try:
+                    # 파일명 생성 (question_id가 있으면 사용, 없으면 인덱스 사용)
+                    question_id = qa_data.get('question_id', f'{i+1:04d}')
+                    filename = f"qa_{question_id}.json"
+                    
+                    # S3 키 생성
+                    json_key = f"{self.config.S3_BASE_PREFIX}/{filename}"
+                    
+                    # JSON 데이터를 BytesIO로 준비
+                    json_content = json.dumps(qa_data, ensure_ascii=False, indent=2)
+                    json_bytes = json_content.encode('utf-8')
+                    json_buffer = BytesIO(json_bytes)
+                    
+                    # S3에 업로드
+                    upload_result = self.s3_manager.upload_file(
+                        file_path_or_obj=json_buffer,
+                        bucket=self.config.S3_BUCKET_NAME,
+                        key=json_key
+                    )
+                    
+                    if upload_result:
+                        saved_count += 1
+                    else:
+                        self.logger.error(f"Failed to upload Q&A {question_id} to S3")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error uploading Q&A {qa_data.get('question_id', i)} to S3: {e}")
+            
+            self.logger.info(f"Uploaded {saved_count} individual files to S3")
+            
+            # 호환성을 위해 기존 통합 파일도 저장
             if self.simple_result:
                 filename = self.config.S3_SIMPLE_FILENAME
             else:
                 filename = self.config.S3_DETAIL_FILENAME
             
-            # S3 키 생성 (easylaw 폴더 바로 아래에 저장)
             json_key = f"{self.config.S3_BASE_PREFIX}/{filename}"
-            
-            # JSON 데이터를 BytesIO로 준비
             json_content = json.dumps(qa_data_list, ensure_ascii=False, indent=2)
             json_bytes = json_content.encode('utf-8')
-            
-            # BytesIO 객체 생성
-            from io import BytesIO
             json_buffer = BytesIO(json_bytes)
             
-            # S3에 업로드
             upload_result = self.s3_manager.upload_file(
                 file_path_or_obj=json_buffer,
                 bucket=self.config.S3_BUCKET_NAME,
@@ -189,10 +270,7 @@ class EasylawDataSaver:
             )
             
             if upload_result:
-                self.logger.info(f"Data uploaded to S3: s3://{self.config.S3_BUCKET_NAME}/{json_key}")
-            else:
-                self.logger.error("Failed to upload data to S3")
-                return
+                self.logger.info(f"Legacy combined file also uploaded to S3: s3://{self.config.S3_BUCKET_NAME}/{json_key}")
             
         except Exception as e:
             self.logger.error(f"S3 upload failed: {str(e)}")
