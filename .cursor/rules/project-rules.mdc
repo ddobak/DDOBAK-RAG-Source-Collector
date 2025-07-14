@@ -24,19 +24,7 @@ DDOBAK-RAG-Source-Collector/
 │   ├── setup.md              # 설정 및 설치 가이드
 │   └── crawler-guide.md      # 크롤러 개발 가이드
 ├── data/                      # 크롤링된 데이터 저장
-│   └── lawtalk/              # 로톡 데이터
-│       ├── consultation_case/ # 상담 사례
-│       ├── solved_cases/     # 해결된 사례
-│       └── guide_posts/      # 가이드 포스트
 ├── logs/                      # 로그 파일
-├── lawtalk/                   # 로톡 크롤러 모듈
-│   ├── __init__.py
-│   ├── lawtalk_crawler.py    # 메인 크롤러
-│   ├── lawtalk_config.py     # 로톡 설정
-│   └── cases/                # 사례별 크롤링 모듈
-│       ├── get_qna_data.py   # 상담 사례 크롤링
-│       ├── get_solved_data.py # 해결된 사례 크롤링
-│       └── get_guide_data.py # 가이드 포스트 크롤링
 ├── law_open_api/              # 법무부 오픈API 크롤러 모듈
 │   ├── __init__.py
 │   └── api_crawler.py
@@ -54,7 +42,6 @@ DDOBAK-RAG-Source-Collector/
 │   └── validate_args.py      # CLI 인자 검증
 └── tests/                     # 테스트 코드
     ├── __init__.py
-    └── test_lawtalk.py
 ```
 
 ## 핵심 파일 설명
@@ -65,7 +52,6 @@ DDOBAK-RAG-Source-Collector/
 - **pyproject.toml**: Poetry 의존성 관리 및 크롤러 entry points 정의
 
 ### 크롤러 모듈
-- **lawtalk/**: 로톡 크롤러들을 정리한 모듈
 - **law_open_api/**: 법무부 오픈API 크롤러 모듈  
 - **easylaw/**: 이지로 크롤러 모듈
 
@@ -132,12 +118,10 @@ DDOBAK-RAG-Source-Collector/
 ### 6. 실행 패턴
 ```bash
 # 특정 사이트 크롤링 실행
-poetry run start lawtalk
 poetry run start law_open_api  
 poetry run start easylaw
 
 # 테스트 실행
-poetry run test-lawtalk
 poetry run test-law_open_api
 poetry run test-easylaw
 ```

@@ -27,12 +27,12 @@ DDOBAK RAG Source Collector의 아키텍처 설계 원칙과 구조에 대한 �
 │  │ (Abstract)    │              │ (Plugin System)             │ │
 │  └───────────────┘              └─────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
-         │                                   │
-         v                                   v
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Lawtalk        │    │  LawOpenAPI     │    │  EasyLaw        │
-│  Crawler        │    │  Crawler        │    │  Crawler        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+                  │                         │
+                  v                         v
+            ┌─────────────────┐    ┌─────────────────┐
+            │  LawOpenAPI     │    │  EasyLaw        │
+            │  Crawler        │    │  Crawler        │
+            └─────────────────┘    └─────────────────┘
 ```
 
 ## 🏗️ 계층 구조
@@ -102,7 +102,6 @@ class S3Manager:
 ```toml
 # pyproject.toml
 [tool.poetry.plugins."ddobak.crawlers"]
-lawtalk = "lawtalk.lawtalk_crawler:LawtalkCrawler"
 law_open_api = "law_open_api.api_crawler:LawOpenAPICrawler"
 ```
 
@@ -132,7 +131,7 @@ def create_crawler(site: str, options: dict):
 ### 1. 설정 데이터 흐름
 
 ```
-[.env] → [config.py] → [LawtalkConfig] → [Crawler]
+[.env] → [config.py] → [EasylawConfig] → [Crawler]
   ↑         ↑              ↑              ↑
 환경변수   전역설정      사이트별설정    크롤러인스턴스
 ```
@@ -175,9 +174,6 @@ class CloudStorageManager:
 ### 1. 환경변수 기반 설정
 
 ```python
-# 민감한 정보는 환경변수로 관리
-LAWTALK_ID = os.getenv("LAWTALK_ID")
-LAWTALK_PW = os.getenv("LAWTALK_PW")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 ```
 
@@ -185,7 +181,7 @@ AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 
 ```python
 # 로그인 세션 안전 관리
-class LawtalkCrawler:
+class EasylawCrawler:
     def _login(self):
         # 로그인 후 세션 쿠키 저장
         self.session_cookie = response.cookies['connect.sid']
@@ -233,7 +229,7 @@ class BaseCrawler:
 
 ```python
 # 테스트에서 HTTP 요청을 모의할 수 있도록 설계
-class LawtalkCrawler:
+class EasylawCrawler:
     def __init__(self, session=None):
         self.session = session or requests.Session()
 ```
