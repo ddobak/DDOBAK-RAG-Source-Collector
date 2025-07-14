@@ -182,64 +182,81 @@ class EasylawDataSaver:
             self._save_to_s3(filtered_data)
     
     def _save_to_local(self, qa_data_list: List[Dict]) -> None:
-        """로컬 파일 시스템에 개별 파일로 저장"""
+        """로컬 파일 시스템에 개별 txt 파일로 저장"""
         # 데이터 디렉토리 생성
         data_dir = self.output_dir / self.config.OUTPUT_SUBDIR
         data_dir.mkdir(exist_ok=True)
         
-        # 개별 파일로 저장
+        # 개별 txt 파일로 저장
         saved_count = 0
         for i, qa_data in enumerate(qa_data_list):
             try:
                 # 파일명 생성 (question_id가 있으면 사용, 없으면 인덱스 사용)
                 question_id = qa_data.get('question_id', f'{i+1:04d}')
-                filename = f"qa_{question_id}.json"
+                filename = f"qa_{question_id}.txt"
                 filepath = data_dir / filename
                 
-                # 개별 파일로 저장
+                # 텍스트 내용 생성 (question과 answer 필드 결합)
+                text_content = ""
+                if qa_data.get('question'):
+                    text_content += qa_data['question']
+                if qa_data.get('answer'):
+                    if text_content:  # question이 있으면 줄바꿈 추가
+                        text_content += "\n\n"
+                    text_content += qa_data['answer']
+                
+                # 개별 txt 파일로 저장
                 with open(filepath, 'w', encoding='utf-8') as f:
-                    json.dump(qa_data, f, ensure_ascii=False, indent=2)
+                    f.write(text_content)
                 
                 saved_count += 1
                 
             except Exception as e:
                 self.logger.error(f"Error saving Q&A {qa_data.get('question_id', i)}: {e}")
         
-        self.logger.info(f"Data saved to {saved_count} individual files in {data_dir}")
+        self.logger.info(f"Data saved to {saved_count} individual txt files in {data_dir}")
         
-        # 호환성을 위해 기존 통합 파일도 저장
+        # 호환성을 위해 기존 통합 JSON 파일도 저장
         json_file = data_dir / self.config.JSON_FILENAME
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(qa_data_list, f, ensure_ascii=False, indent=2)
         
-        self.logger.info(f"Legacy combined file also saved: {json_file}")
+        self.logger.info(f"Legacy combined JSON file also saved: {json_file}")
     
     def _save_to_s3(self, qa_data_list: List[Dict]) -> None:
-        """S3에 개별 파일로 저장"""
+        """S3에 개별 txt 파일로 저장"""
         try:
             from io import BytesIO
             
-            # 개별 파일로 S3에 저장
+            # 개별 txt 파일로 S3에 저장
             saved_count = 0
             for i, qa_data in enumerate(qa_data_list):
                 try:
                     # 파일명 생성 (question_id가 있으면 사용, 없으면 인덱스 사용)
                     question_id = qa_data.get('question_id', f'{i+1:04d}')
-                    filename = f"qa_{question_id}.json"
+                    filename = f"qa_{question_id}.txt"
                     
                     # S3 키 생성
-                    json_key = f"{self.config.S3_BASE_PREFIX}/{filename}"
+                    txt_key = f"{self.config.S3_BASE_PREFIX}/{filename}"
                     
-                    # JSON 데이터를 BytesIO로 준비
-                    json_content = json.dumps(qa_data, ensure_ascii=False, indent=2)
-                    json_bytes = json_content.encode('utf-8')
-                    json_buffer = BytesIO(json_bytes)
+                    # 텍스트 내용 생성 (question과 answer 필드 결합)
+                    text_content = ""
+                    if qa_data.get('question'):
+                        text_content += qa_data['question']
+                    if qa_data.get('answer'):
+                        if text_content:  # question이 있으면 줄바꿈 추가
+                            text_content += "\n\n"
+                        text_content += qa_data['answer']
+                    
+                    # 텍스트 데이터를 BytesIO로 준비
+                    text_bytes = text_content.encode('utf-8')
+                    text_buffer = BytesIO(text_bytes)
                     
                     # S3에 업로드
                     upload_result = self.s3_manager.upload_file(
-                        file_path_or_obj=json_buffer,
+                        file_path_or_obj=text_buffer,
                         bucket=self.config.S3_BUCKET_NAME,
-                        key=json_key
+                        key=txt_key
                     )
                     
                     if upload_result:
@@ -250,9 +267,9 @@ class EasylawDataSaver:
                 except Exception as e:
                     self.logger.error(f"Error uploading Q&A {qa_data.get('question_id', i)} to S3: {e}")
             
-            self.logger.info(f"Uploaded {saved_count} individual files to S3")
+            self.logger.info(f"Uploaded {saved_count} individual txt files to S3")
             
-            # 호환성을 위해 기존 통합 파일도 저장
+            # 호환성을 위해 기존 통합 JSON 파일도 저장
             if self.simple_result:
                 filename = self.config.S3_SIMPLE_FILENAME
             else:
@@ -270,7 +287,7 @@ class EasylawDataSaver:
             )
             
             if upload_result:
-                self.logger.info(f"Legacy combined file also uploaded to S3: s3://{self.config.S3_BUCKET_NAME}/{json_key}")
+                self.logger.info(f"Legacy combined JSON file also uploaded to S3: s3://{self.config.S3_BUCKET_NAME}/{json_key}")
             
         except Exception as e:
             self.logger.error(f"S3 upload failed: {str(e)}")

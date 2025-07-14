@@ -918,7 +918,7 @@ class LawOpenApiCrawler(BaseCrawler):
             self._save_to_s3_individually(keyword, data)
     
     def _save_to_local_individually(self, keyword: str, data: List[Dict[str, Any]]) -> None:
-        """판례 데이터를 로컬에 개별 파일로 저장"""
+        """판례 데이터를 로컬에 개별 txt 파일로 저장"""
         # 키워드별 디렉토리 생성
         keyword_dir = self.precedent_dir / keyword
         keyword_dir.mkdir(exist_ok=True)
@@ -928,22 +928,49 @@ class LawOpenApiCrawler(BaseCrawler):
             try:
                 # 파일명 생성 (prec_id가 있으면 사용, 없으면 인덱스 사용)
                 prec_id = precedent.get('prec_id', f'{i+1:04d}')
-                filename = f"precedent_{prec_id}.json"
+                filename = f"precedent_{prec_id}.txt"
                 filepath = keyword_dir / filename
                 
-                # 개별 파일로 저장
+                # 텍스트 내용 생성 (지정된 필드들을 한글 레이블과 함께 결합)
+                text_parts = []
+                
+                if precedent.get('case_name'):
+                    text_parts.append(f"사건명: {precedent['case_name']}")
+                
+                if precedent.get('court_name'):
+                    text_parts.append(f"법원명: {precedent['court_name']}")
+                
+                if precedent.get('case_type_name'):
+                    text_parts.append(f"사건종류: {precedent['case_type_name']}")
+                
+                if precedent.get('judgment_type'):
+                    text_parts.append(f"판결유형: {precedent['judgment_type']}")
+                
+                if precedent.get('judgment_date'):
+                    text_parts.append(f"선고일자: {precedent['judgment_date']}")
+                
+                if precedent.get('case_number'):
+                    text_parts.append(f"사건번호: {precedent['case_number']}")
+                
+                if precedent.get('text_content'):
+                    text_parts.append(f"판례내용: {precedent['text_content']}")
+                
+                # 텍스트 결합
+                text_content = "\n\n".join(text_parts)
+                
+                # 개별 txt 파일로 저장
                 with open(filepath, 'w', encoding='utf-8') as f:
-                    json.dump(precedent, f, ensure_ascii=False, indent=2)
+                    f.write(text_content)
                 
                 saved_count += 1
                 
             except Exception as e:
                 self.logger.error(f"Error saving precedent {precedent.get('prec_id', i)}: {e}")
         
-        self.logger.info(f"Saved {saved_count} precedent records individually to {keyword_dir}")
+        self.logger.info(f"Saved {saved_count} precedent records individually as txt files to {keyword_dir}")
     
     def _save_to_s3_individually(self, keyword: str, data: List[Dict[str, Any]]) -> None:
-        """판례 데이터를 S3에 개별 파일로 저장"""
+        """판례 데이터를 S3에 개별 txt 파일로 저장"""
         try:
             from config import config
             
@@ -960,19 +987,45 @@ class LawOpenApiCrawler(BaseCrawler):
                 try:
                     # 파일명 생성 (prec_id가 있으면 사용, 없으면 인덱스 사용)
                     prec_id = precedent.get('prec_id', f'{i+1:04d}')
-                    filename = f"precedent_{prec_id}.json"
+                    filename = f"precedent_{prec_id}.txt"
                     
                     # S3 키 생성
                     s3_key = f"law_open_api/precedent/{keyword}/{filename}"
                     
-                    # JSON 데이터를 BytesIO로 준비
-                    json_content = json.dumps(precedent, ensure_ascii=False, indent=2)
-                    json_bytes = json_content.encode('utf-8')
-                    json_buffer = BytesIO(json_bytes)
+                    # 텍스트 내용 생성 (지정된 필드들을 한글 레이블과 함께 결합)
+                    text_parts = []
+                    
+                    if precedent.get('case_name'):
+                        text_parts.append(f"사건명: {precedent['case_name']}")
+                    
+                    if precedent.get('court_name'):
+                        text_parts.append(f"법원명: {precedent['court_name']}")
+                    
+                    if precedent.get('case_type_name'):
+                        text_parts.append(f"사건종류: {precedent['case_type_name']}")
+                    
+                    if precedent.get('judgment_type'):
+                        text_parts.append(f"판결유형: {precedent['judgment_type']}")
+                    
+                    if precedent.get('judgment_date'):
+                        text_parts.append(f"선고일자: {precedent['judgment_date']}")
+                    
+                    if precedent.get('case_number'):
+                        text_parts.append(f"사건번호: {precedent['case_number']}")
+                    
+                    if precedent.get('text_content'):
+                        text_parts.append(f"판례내용: {precedent['text_content']}")
+                    
+                    # 텍스트 결합
+                    text_content = "\n\n".join(text_parts)
+                    
+                    # 텍스트 데이터를 BytesIO로 준비
+                    text_bytes = text_content.encode('utf-8')
+                    text_buffer = BytesIO(text_bytes)
                     
                     # S3에 업로드
                     upload_result = s3_manager.upload_file(
-                        file_path_or_obj=json_buffer,
+                        file_path_or_obj=text_buffer,
                         bucket=config.AWS_S3_BUCKET,
                         key=s3_key
                     )
@@ -985,7 +1038,7 @@ class LawOpenApiCrawler(BaseCrawler):
                 except Exception as e:
                     self.logger.error(f"Error uploading precedent {precedent.get('prec_id', i)} to S3: {e}")
             
-            self.logger.info(f"Uploaded {saved_count} precedent records individually to S3 (s3://{config.AWS_S3_BUCKET}/law_open_api/precedent/{keyword}/)")
+            self.logger.info(f"Uploaded {saved_count} precedent records individually as txt files to S3 (s3://{config.AWS_S3_BUCKET}/law_open_api/precedent/{keyword}/)")
             
         except Exception as e:
             self.logger.error(f"S3 upload failed: {str(e)}")
