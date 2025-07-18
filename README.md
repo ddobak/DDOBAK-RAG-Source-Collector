@@ -38,10 +38,10 @@ cp .env.example .env
 
 ```bash
 # 로톡 크롤링 (기본 설정)
-poetry run start lawtalk
+poetry run start easylaw
 
 # 상세 옵션 지정
-poetry run start lawtalk detail s3 new
+poetry run start easylaw detail s3 new
 ```
 
 ### 3. 테스트 실행
@@ -51,7 +51,7 @@ poetry run start lawtalk detail s3 new
 poetry run pytest
 
 # 특정 모듈 테스트
-poetry run test-lawtalk
+poetry run test-easylaw
 ```
 
 ## 📖 상세 문서
@@ -69,9 +69,9 @@ DDOBAK-RAG-Source-Collector/
 ├── common/                    # 공통 모듈
 │   ├── base_crawler.py        # 크롤러 베이스 클래스
 │   └── crawler_registry.py    # 크롤러 관리
-├── lawtalk/                   # 로톡 크롤러
-│   ├── lawtalk_crawler.py     # 메인 크롤러
-│   ├── lawtalk_config.py      # 로톡 설정
+├── easylaw/                   # 로톡 크롤러
+│   ├── easylaw_crawler.py     # 메인 크롤러
+│   ├── easylaw_config.py      # 로톡 설정
 │   └── cases/                 # 데이터 타입별 크롤링
 ├── utils/                     # 유틸리티 함수들
 ├── data/                      # 크롤링된 데이터
@@ -79,36 +79,7 @@ DDOBAK-RAG-Source-Collector/
 └── docs/                      # 프로젝트 문서
 ```
 
-## 💾 데이터 수집 현황
-
-### 로톡 (Lawtalk) 데이터
-
-- **상담 사례 (Consultation Cases)**: 법률 질문과 변호사 답변
-- **해결된 사례 (Solved Cases)**: 카테고리별 해결 사례
-- **가이드 포스트 (Guide Posts)**: 법률 가이드 및 정보
-
-각 데이터 타입의 상세 구조는 [데이터 구조 문서](docs/data-structure.md)를 참고하세요.
-
-## ⚙️ 설정 옵션
-
-### CLI 인자
-
-| 인자 | 설명 | 옵션 |
-|------|------|------|
-| `site` | 크롤링할 사이트 | `lawtalk` |
-| `simple_result` | 결과 타입 | `simple`, `detail` |
-| `storage_type` | 저장 위치 | `local`, `s3` |
-| `only_new` | 데이터 범위 | `new`, `all` |
-
-### 환경변수
-
-주요 환경변수들:
-
 ```bash
-# 로톡 로그인 정보
-LAWTALK_ID=your_email
-LAWTALK_PW=your_password
-
 # AWS S3 설정 (S3 사용시)
 AWS_PROFILE=your_profile
 AWS_REGION=ap-northeast-2
